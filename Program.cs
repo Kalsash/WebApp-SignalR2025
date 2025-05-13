@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using WebApp_SignalR2025.Hubs;
 using WebApp_SignalR2025.Models;
 
@@ -12,9 +11,9 @@ namespace WebApp_SignalR2025
         {
             var builder = WebApplication.CreateBuilder(args);
 
-
             builder.Services.AddControllersWithViews();
             builder.Services.AddSignalR();
+
             string connection = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<ApplicationContext>(options => options.UseSqlServer(connection));
 
@@ -23,8 +22,8 @@ namespace WebApp_SignalR2025
 
             builder.Services.AddAuthorization();
 
-
             var app = builder.Build();
+
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler("/Home/Error");
@@ -33,10 +32,8 @@ namespace WebApp_SignalR2025
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
-
             app.UseRouting();
-
-            app.UseAuthentication();    // подключение аутентификации
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllerRoute(
