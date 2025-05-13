@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using WebApp_SignalR2025.Models;
 
@@ -8,14 +9,18 @@ namespace WebApp_SignalR2025.Controllers
     {
         private readonly ILogger<HomeController> _logger;
 
-        public HomeController(ILogger<HomeController> logger)
+        private readonly UserManager<User> _userManager;
+
+        public HomeController(ILogger<HomeController> logger, UserManager<User> userManager)
         {
             _logger = logger;
+            _userManager = userManager;
         }
 
         public IActionResult Index()
         {
-            return View();
+            var users = _userManager.Users.ToList(); // Получите всех пользователей
+            return View(users);
         }
 
         public IActionResult Privacy()
