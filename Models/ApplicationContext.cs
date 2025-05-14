@@ -27,7 +27,7 @@ namespace WebApp_SignalR2025.Models
                 {
                     UserName = "testuser1",
                     Email = "testuser1@example.com",
-                    IconPath = "path/to/icon1.png",
+                    IconPath = "https://i.pinimg.com/736x/43/a2/f9/43a2f9d3651715320c76620e8c18b0a2.jpg",
                     NormalizedUserName = "TESTUSER1",
                     NormalizedEmail = "TESTUSER1@EXAMPLE.COM"
                 };
@@ -37,7 +37,7 @@ namespace WebApp_SignalR2025.Models
                 {
                     UserName = "testuser2",
                     Email = "testuser2@example.com",
-                    IconPath = "path/to/icon2.png",
+                    IconPath = "https://avatars.mds.yandex.net/get-yapic/25358/hVfmUhEXkheMn3SzCUQwMWMgo8-1/orig",
                     NormalizedUserName = "TESTUSER2",
                     NormalizedEmail = "TESTUSER2@EXAMPLE.COM"
                 };
