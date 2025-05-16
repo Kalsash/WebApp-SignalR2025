@@ -1,6 +1,14 @@
 ﻿@model IEnumerable<WebApp_SignalR2025.Models.User>
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<User> UserManager
 @{
     ViewData["Title"] = "Chats Page";
+}
+@{
+    var currentUser = await UserManager.GetUserAsync(User);
+    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var userName = User.Identity?.Name;
+    var iconPath = currentUser?.IconPath ?? "https://i.pravatar.cc/100";
 }
 
 <!DOCTYPE html>
@@ -115,10 +123,10 @@
             .build();
 
         // Получаем текущего пользователя
-        const currentUser = {
-            id: '@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value',
-            name: '@User.Identity.Name',
-            icon: '@(User.FindFirst("IconPath")?.Value ?? "https://i.pravatar.cc/100")'
+             const currentUser = {
+            id: '@userId',
+            name: '@userName',
+            icon: '@iconPath'
         };
 
         async function start() {
