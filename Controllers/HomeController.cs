@@ -20,6 +20,7 @@ namespace WebApp_SignalR2025.Controllers
         public IActionResult Index()
         {
             var users = _userManager.Users.ToList(); // Получите всех пользователей
+                                                     // В контроллере
             return View(users);
         }
 

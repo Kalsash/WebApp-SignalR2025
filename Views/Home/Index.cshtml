@@ -148,18 +148,27 @@
                 ? 'flex items-start space-x-2 max-w-3/4 justify-end'
                 : 'flex items-start space-x-2 max-w-3/4';
 
-            messageElement.innerHTML = `
-                ${isCurrentUser ? '' : `<img src="${message.senderIcon}" class="w-8 h-8 rounded-full">`}
-                <div class="${isCurrentUser ? 'order-2' : ''}">
-                    <div class="${isCurrentUser ? 'bg-swamp-600 text-white' : 'bg-white'} p-3 rounded-xl shadow-sm">
+        messageElement.innerHTML = `
+            <div class="flex items-start mb-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}">
+                ${isCurrentUser ? '' : `<img src="${message.senderIcon}" class="w-8 h-8 rounded-full mr-2">`}
+
+                <div class="order-2 flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}">
+                    <h4 class="${isCurrentUser ? 'font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent' : 'font-semibold bg-gradient-to-r from-gray-700 to-swamp-600 bg-clip-text text-transparent'}">
+                        ${isCurrentUser ? 'Вы' : message.senderName}
+                    </h4>
+
+                    <div class="${isCurrentUser ? 'bg-swamp-600 text-white' : 'bg-white border border-gray-200'} p-3 rounded-xl shadow-sm max-w-md mt-1">
                         <p>${message.message}</p>
                     </div>
-                    <span class="text-xs text-swamp-500 mt-1 block">
+
+                    <span class="text-xs ${isCurrentUser ? 'text-swamp-300' : 'text-swamp-500'} mt-1">
                         ${new Date(message.timestamp).toLocaleTimeString()}
                     </span>
                 </div>
-                ${isCurrentUser ? `<img src="${currentUser.icon}" class="w-8 h-8 rounded-full order-1">` : ''}
-            `;
+
+                ${isCurrentUser ? `<img src="${currentUser.icon}" class="w-8 h-8 rounded-full ml-2">` : ''}
+            </div>
+        `;
 
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -212,8 +221,10 @@
                     messageElement.className = 'flex items-start space-x-2 max-w-3/4 justify-end';
                     messageElement.innerHTML = `
                         <div class="order-2">
+                          <p class="font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">${currentUser.name}</p>
                             <div class="bg-swamp-600 text-white p-3 rounded-xl shadow-sm">
                                 <p>${message}</p>
+                             
                             </div>
                             <span class="text-xs text-swamp-500">${new Date().toLocaleTimeString()}</span>
                         </div>
