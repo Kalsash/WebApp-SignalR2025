@@ -61,7 +61,7 @@
                                     <img src="@user.IconPath" class="w-12 h-12 rounded-full">
                                     <div class="flex-1">
                                         <div class="flex items-center justify-between">
-                                            <h4 class="font-semibold text-swamp-900">@displayName</h4> <!-- Изменили на displayName -->
+                                            <h4 class="font-semibold text-swamp-900">@displayName</h4>
                                         </div>
                                     </div>
                                 </div>
@@ -106,6 +106,9 @@
     </div>
 
     <script>
+        // Глобальная переменная для хранения ID выбранного получателя
+        let selectedReceiverId = null;
+
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/chats")
             .configureLogging(signalR.LogLevel.Information)
@@ -133,46 +136,60 @@
         });
 
         connection.on("ReceiveMessage", (message) => {
+            console.log("Received message:", message.message); // Для отладки
+
             const messagesContainer = document.getElementById('messages-container');
 
+            // Проверяем, от кого сообщение - от нас или от собеседника
+            const isCurrentUser = message.SenderId === currentUser.id;
+
             const messageElement = document.createElement('div');
-            messageElement.className = 'flex items-start space-x-2 max-w-3/4';
+            messageElement.className = isCurrentUser
+                ? 'flex items-start space-x-2 max-w-3/4 justify-end'
+                : 'flex items-start space-x-2 max-w-3/4';
+
             messageElement.innerHTML = `
-                <img src="${message.SenderIcon}" class="w-8 h-8 rounded-full">
-                <div>
-                    <div class="bg-white p-3 rounded-xl shadow-sm">
-                        <p class="text-swamp-900">${message.Message}</p>
+                ${isCurrentUser ? '' : `<img src="${message.senderIcon}" class="w-8 h-8 rounded-full">`}
+                <div class="${isCurrentUser ? 'order-2' : ''}">
+                    <div class="${isCurrentUser ? 'bg-swamp-600 text-white' : 'bg-white'} p-3 rounded-xl shadow-sm">
+                        <p>${message.message}</p>
                     </div>
-                    <span class="text-xs text-swamp-500 mt-1 block">${new Date(message.Timestamp).toLocaleTimeString()}</span>
+                    <span class="text-xs text-swamp-500 mt-1 block">
+                        ${new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
                 </div>
+                ${isCurrentUser ? `<img src="${currentUser.icon}" class="w-8 h-8 rounded-full order-1">` : ''}
             `;
+
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         });
 
         connection.on("UserTyping", (user) => {
             const typingIndicator = document.getElementById('typingIndicator');
-            typingIndicator.textContent = `${user.SenderName} is typing...`;
-            typingIndicator.classList.remove('hidden');
+            if (typingIndicator) {
+                typingIndicator.textContent = `${user.SenderName} is typing...`;
+                typingIndicator.classList.remove('hidden');
 
-            setTimeout(() => {
-                typingIndicator.classList.add('hidden');
-            }, 2000);
+                setTimeout(() => {
+                    typingIndicator.classList.add('hidden');
+                }, 2000);
+            }
         });
 
         document.querySelectorAll('.chat-item').forEach(item => {
             item.addEventListener('click', function() {
-                const receiverId = item.getAttribute('data-user-id');
-                const receiverName = item.getAttribute('data-user-name');
-                const receiverIcon = item.getAttribute('data-user-icon');
+                selectedReceiverId = this.getAttribute('data-user-id');
+                const receiverName = this.getAttribute('data-user-name');
+                const receiverIcon = this.getAttribute('data-user-icon');
 
-                // Установка заголовка чата в зависимости от получателя
+                // Установка заголовка чата
                 const chatHeader = document.getElementById('chat-header');
                 const headerName = document.getElementById('receiver-name');
+                const receiverIconElement = document.getElementById('receiver-icon');
 
-                headerName.innerText = receiverId === currentUser.id ? "Избранное" : receiverName;
-                document.getElementById('receiver-icon').src = receiverIcon;
-
+                headerName.innerText = selectedReceiverId === currentUser.id ? "Избранное" : receiverName;
+                receiverIconElement.src = receiverIcon;
                 chatHeader.classList.remove('hidden');
 
                 // Очистить сообщения при выборе нового собеседника
@@ -184,31 +201,40 @@
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
 
-            if (message) {
-                const receiverId = document.getElementById('receiver-name').innerText == "Избранное" ? currentUser.id : document.selectedReceiverId; // Определите, с кем идет разговор
-                await connection.invoke("SendMessage", receiverId, message);
-                input.value = '';
+            if (message && selectedReceiverId) {
+                try {
+                    await connection.invoke("SendMessage", selectedReceiverId, message);
+                    input.value = '';
 
-                const messagesContainer = document.getElementById('messages-container');
-                const messageElement = document.createElement('div');
-                messageElement.className = 'flex items-start space-x-2 max-w-3/4 justify-end';
-                messageElement.innerHTML = `
-                    <div class="order-2">
-                        <div class="bg-swamp-600 text-white p-3 rounded-xl shadow-sm">
-                            <p>${message}</p>
+                    // Добавляем сообщение в интерфейс
+                    const messagesContainer = document.getElementById('messages-container');
+                    const messageElement = document.createElement('div');
+                    messageElement.className = 'flex items-start space-x-2 max-w-3/4 justify-end';
+                    messageElement.innerHTML = `
+                        <div class="order-2">
+                            <div class="bg-swamp-600 text-white p-3 rounded-xl shadow-sm">
+                                <p>${message}</p>
+                            </div>
+                            <span class="text-xs text-swamp-500">${new Date().toLocaleTimeString()}</span>
                         </div>
-                        <span class="text-xs text-swamp-500">${new Date().toLocaleTimeString()}</span>
-                    </div>
-                    <img src="${currentUser.icon}" class="w-8 h-8 rounded-full order-1">
-                `;
-                messagesContainer.appendChild(messageElement);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        <img src="${currentUser.icon}" class="w-8 h-8 rounded-full order-1">
+                    `;
+                    messagesContainer.appendChild(messageElement);
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                } catch (err) {
+                    console.error("Error sending message:", err);
+                }
             }
         });
 
         document.getElementById('messageInput').addEventListener('input', async (e) => {
-            const receiverId = document.getElementById('receiver-name').innerText == "Избранное" ? currentUser.id : document.selectedReceiverId; // Определите, с кем идет разговор
-            await connection.invoke("TypingNotification", receiverId);
+            if (selectedReceiverId && e.target.value.trim().length > 0) {
+                try {
+                    await connection.invoke("TypingNotification", selectedReceiverId);
+                } catch (err) {
+                    console.error("Error sending typing notification:", err);
+                }
+            }
         });
 
         // Запускаем подключение к SignalR

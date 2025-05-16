@@ -37,9 +37,9 @@ namespace WebApp_SignalR2025.Hubs
                         {
                             SenderId = sender.Id,
                             SenderName = sender.UserName,
-                            SenderIcon = sender.IconPath,
+                            SenderIcon = sender.IconPath ?? "https://i.pravatar.cc/100",
                             Message = message,
-                            Timestamp = DateTime.Now
+                            Timestamp = DateTime.Now.ToString("o")
                         });
                 }
             }
