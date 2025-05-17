@@ -47,7 +47,7 @@
         @if (User.Identity.IsAuthenticated)
         {
             <!-- Чат интерфейс -->
-            <div class="w-full flex">
+            <div class="w-full flex h-full">
                 <!-- Chat List (Left Column) -->
                 <div class="w-1/3 bg-white border-r border-swamp-100 flex flex-col">
                     <!-- Header -->
@@ -60,11 +60,46 @@
                     </div>
 
                     <!-- Conversations List -->
-                    <div class="flex-1 overflow-y-auto">
+                    <div class="flex-1 overflow-y-auto" id="chat-list">
+                        <!-- Group chats section -->
+                        <div class="p-4 border-b border-swamp-100 bg-swamp-50">
+                            <h3 class="font-semibold text-swamp-700">Group Chats</h3>
+                        </div>
+                        <div class="group-item p-4 hover:bg-swamp-50 border-b border-swamp-100 cursor-pointer" data-group-name="General">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-full bg-swamp-200 flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-swamp-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-swamp-900">General</h4>
+                                    <p class="text-xs text-swamp-500">Group chat</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="group-item p-4 hover:bg-swamp-50 border-b border-swamp-100 cursor-pointer" data-group-name="Support">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-full bg-swamp-200 flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-swamp-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-swamp-900">Support</h4>
+                                    <p class="text-xs text-swamp-500">Group chat</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Private chats section -->
+                        <div class="p-4 border-b border-swamp-100 bg-swamp-50 mt-4">
+                            <h3 class="font-semibold text-swamp-700">Private Chats</h3>
+                        </div>
                         @foreach (var user in Model)
                         {
                             var displayName = user.Id == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ? "Избранное" : user.UserName;
-                            <div class="p-4 hover:bg-swamp-50 border-b border-swamp-100 cursor-pointer chat-item" data-user-id="@user.Id" data-user-name="@displayName" data-user-icon="@user.IconPath">
+                            <div class="chat-item p-4 hover:bg-swamp-50 border-b border-swamp-100 cursor-pointer" data-user-id="@user.Id" data-user-name="@displayName" data-user-icon="@user.IconPath">
                                 <div class="flex items-center space-x-3">
                                     <img src="@user.IconPath" class="w-12 h-12 rounded-full">
                                     <div class="flex-1">
@@ -86,6 +121,8 @@
                             <h3 id="receiver-name" class="font-semibold text-swamp-900"></h3>
                         </div>
                     </div>
+
+                    <div id="typingIndicator" class="hidden text-sm text-gray-500 px-4 py-1 bg-swamp-50"></div>
 
                     <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4 bg-swamp-50"></div>
 
@@ -116,6 +153,7 @@
     <script>
         // Глобальные переменные для хранения состояния чата
         let selectedReceiverId = null;
+        let currentGroup = null;
         let currentChatMessages = [];
 
         const connection = new signalR.HubConnectionBuilder()
@@ -144,15 +182,49 @@
             await start();
         });
 
+        // Обработчики сообщений
         connection.on("ReceiveMessage", (message) => {
-            console.log("Received message:", message);
-                if (selectedReceiverId === message.senderId)
-                    displayMessage(message);
+            console.log("Received private message:", message);
+            if (selectedReceiverId === message.senderId) {
+                displayMessage(message);
+            }
         });
 
+        connection.on("ReceiveGroupMessage", (message) => {
+            console.log("Received group message:", message);
+            if (currentGroup === message.groupName) {
+                displayGroupMessage(message);
+            }
+        });
+
+        connection.on("UserJoined", (userName) => {
+            if (currentGroup) {
+                showSystemMessage(`${userName} joined the group`);
+            }
+        });
+
+        connection.on("UserLeft", (userName) => {
+            if (currentGroup) {
+                showSystemMessage(`${userName} left the group`);
+            }
+        });
+
+        connection.on("UserTyping", (user) => {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator && (selectedReceiverId === user.senderId || currentGroup)) {
+                typingIndicator.textContent = `${user.senderName} is typing...`;
+                typingIndicator.classList.remove('hidden');
+
+                setTimeout(() => {
+                    typingIndicator.classList.add('hidden');
+                }, 2000);
+            }
+        });
+
+        // Функции отображения сообщений
         function displayMessage(message) {
             const messagesContainer = document.getElementById('messages-container');
-            const isCurrentUser = message.SenderId === currentUser.id;
+            const isCurrentUser = message.senderId === currentUser.id;
 
             const messageElement = document.createElement('div');
             messageElement.className = isCurrentUser
@@ -183,41 +255,117 @@
 
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            // Сохраняем сообщение в историю текущего чата
             currentChatMessages.push(message);
         }
 
-        connection.on("UserTyping", (user) => {
-            const typingIndicator = document.getElementById('typingIndicator');
-            if (typingIndicator && selectedReceiverId === user.SenderId) {
-                typingIndicator.textContent = `${user.SenderName} is typing...`;
-                typingIndicator.classList.remove('hidden');
+        function displayGroupMessage(message) {
+            const messagesContainer = document.getElementById('messages-container');
+            const isCurrentUser = message.senderId === currentUser.id;
 
-                setTimeout(() => {
-                    typingIndicator.classList.add('hidden');
-                }, 2000);
-            }
-        });
+            const messageElement = document.createElement('div');
+            messageElement.className = isCurrentUser
+                ? 'flex items-start space-x-2 max-w-3/4 justify-end'
+                : 'flex items-start space-x-2 max-w-3/4';
 
+            messageElement.innerHTML = `
+                <div class="flex items-start mb-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}">
+                    ${isCurrentUser ? '' : `<img src="${message.senderIcon}" class="w-8 h-8 rounded-full mr-2">`}
+
+                    <div class="order-2 flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}">
+                        <h4 class="${isCurrentUser ? 'font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent' : 'font-semibold bg-gradient-to-r from-gray-700 to-swamp-600 bg-clip-text text-transparent'}">
+                            ${message.senderName}
+                        </h4>
+
+                        <div class="${isCurrentUser ? 'bg-swamp-600 text-white' : 'bg-white border border-gray-200'} p-3 rounded-xl shadow-sm max-w-md mt-1">
+                            <p>${message.message}</p>
+                        </div>
+
+                        <span class="text-xs ${isCurrentUser ? 'text-swamp-300' : 'text-swamp-500'} mt-1">
+                            ${new Date(message.timestamp).toLocaleTimeString()}
+                        </span>
+                    </div>
+
+                    ${isCurrentUser ? `<img src="${currentUser.icon}" class="w-8 h-8 rounded-full ml-2">` : ''}
+                </div>
+            `;
+
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            currentChatMessages.push(message);
+        }
+
+        function showSystemMessage(message) {
+            const messagesContainer = document.getElementById('messages-container');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'text-center text-gray-500 text-sm my-2';
+            messageElement.textContent = message;
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Обработчики событий UI
         document.querySelectorAll('.chat-item').forEach(item => {
-            item.addEventListener('click', function() {
-                selectedReceiverId = this.getAttribute('data-user-id');
+            item.addEventListener('click', async function() {
+                const receiverId = this.getAttribute('data-user-id');
                 const receiverName = this.getAttribute('data-user-name');
                 const receiverIcon = this.getAttribute('data-user-icon');
 
-                // Установка заголовка чата
-                const chatHeader = document.getElementById('chat-header');
-                const headerName = document.getElementById('receiver-name');
-                const receiverIconElement = document.getElementById('receiver-icon');
+                // Leave current group if any
+                if (currentGroup) {
+                    try {
+                        await connection.invoke("LeaveGroupChat", currentGroup);
+                        currentGroup = null;
+                    } catch (err) {
+                        console.error("Error leaving group:", err);
+                    }
+                }
 
-                headerName.innerText = selectedReceiverId === currentUser.id ? "Избранное" : receiverName;
-                receiverIconElement.src = receiverIcon;
-                chatHeader.classList.remove('hidden');
+                // Set new private chat
+                selectedReceiverId = receiverId;
 
-                // Очистить сообщения при выборе нового собеседника
+                // Update UI
                 document.getElementById('messages-container').innerHTML = '';
+                document.getElementById('chat-header').classList.remove('hidden');
+                document.getElementById('receiver-name').textContent = receiverName;
+                document.getElementById('receiver-icon').src = receiverIcon;
                 currentChatMessages = [];
+            });
+        });
+
+        document.querySelectorAll('.group-item').forEach(item => {
+            item.addEventListener('click', async function() {
+                const groupName = this.getAttribute('data-group-name');
+
+                // Leave current private chat if any
+                if (selectedReceiverId) {
+                    selectedReceiverId = null;
+                }
+
+                // Leave current group if different
+                if (currentGroup && currentGroup !== groupName) {
+                    try {
+                        await connection.invoke("LeaveGroupChat", currentGroup);
+                    } catch (err) {
+                        console.error("Error leaving group:", err);
+                    }
+                }
+
+                // Join new group
+                try {
+                    await connection.invoke("JoinGroupChat", groupName);
+                    currentGroup = groupName;
+
+                    // Update UI
+                    document.getElementById('messages-container').innerHTML = '';
+                    document.getElementById('chat-header').classList.remove('hidden');
+                    document.getElementById('receiver-name').textContent = groupName;
+                    document.getElementById('receiver-icon').src = 'https://i.pravatar.cc/100?img=30';
+                    currentChatMessages = [];
+
+                    showSystemMessage(`You joined ${groupName}`);
+                } catch (err) {
+                    console.error("Error joining group:", err);
+                }
             });
         });
 
@@ -225,43 +373,69 @@
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
 
-            if (message && selectedReceiverId) {
-                // Проверяем, отправляется ли сообщение в "Избранное"
-                const isFavorite = selectedReceiverId === currentUser.id;
+            if (message) {
+                if (selectedReceiverId) {
+                    // Private message
+                    const isFavorite = selectedReceiverId === currentUser.id;
 
-                if (!isFavorite) {
-                    // Обычное сообщение другому пользователю
-                    try {
-                        await connection.invoke("SendMessage", selectedReceiverId, message);
-                    } catch (err) {
-                        console.error("Error sending message:", err);
-                        return; // Прерываем выполнение если ошибка
+                    if (!isFavorite) {
+                        try {
+                            await connection.invoke("SendMessage", selectedReceiverId, message);
+                        } catch (err) {
+                            console.error("Error sending message:", err);
+                            return;
+                        }
                     }
+
+                    input.value = '';
+
+                    // Create message object for display
+                    const newMessage = {
+                        senderId: currentUser.id,
+                        receiverId: selectedReceiverId,
+                        message: message,
+                        senderName: currentUser.name,
+                        senderIcon: currentUser.icon,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    displayMessage(newMessage);
+                } else if (currentGroup) {
+                    // Group message
+                    try {
+                        await connection.invoke("SendGroupMessage", currentGroup, message);
+                    } catch (err) {
+                        console.error("Error sending group message:", err);
+                        return;
+                    }
+
+                    input.value = '';
+
+                    // Create message object for display
+                    const newMessage = {
+                        senderId: currentUser.id,
+                        groupName: currentGroup,
+                        message: message,
+                        senderName: currentUser.name,
+                        senderIcon: currentUser.icon,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    displayGroupMessage(newMessage);
                 }
-
-                input.value = '';
-
-                // Создаем объект сообщения для отображения
-                const newMessage = {
-                    SenderId: currentUser.id,
-                    ReceiverId: selectedReceiverId,
-                    message: message,
-                    senderName: currentUser.name,
-                    senderIcon: currentUser.icon,
-                    timestamp: new Date().toISOString()
-                };
-
-                // Добавляем сообщение в интерфейс
-                displayMessage(newMessage);
             }
         });
 
         document.getElementById('messageInput').addEventListener('input', async (e) => {
-            if (selectedReceiverId && e.target.value.trim().length > 0) {
-                try {
-                    await connection.invoke("TypingNotification", selectedReceiverId);
-                } catch (err) {
-                    console.error("Error sending typing notification:", err);
+            if (e.target.value.trim().length > 0) {
+                if (selectedReceiverId) {
+                    try {
+                        await connection.invoke("TypingNotification", selectedReceiverId);
+                    } catch (err) {
+                        console.error("Error sending typing notification:", err);
+                    }
+                } else if (currentGroup) {
+                    // Можно добавить уведомление о наборе в групповом чате
                 }
             }
         });
