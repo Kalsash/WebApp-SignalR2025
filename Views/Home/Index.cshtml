@@ -7,7 +7,7 @@
 @{
     var currentUser = await UserManager.GetUserAsync(User);
     var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-    var userName = User.Identity?.Name;
+    var userName = User.Identity?.Name?.Split('@')[0]; // Убираем почту из имени текущего пользователя
     var iconPath = currentUser?.IconPath ?? "https://i.pravatar.cc/100";
 }
 
@@ -52,7 +52,7 @@
                 <div class="w-1/3 bg-white border-r border-swamp-100 flex flex-col">
                     <!-- Header -->
                     <div class="p-6 border-b border-swamp-100">
-                        <h2 class="text-2xl font-bold text-swamp-900">Messages</h2>
+                        <h2 class="text-2xl font-bold text-swamp-900">Messages for @userName</h2>
                         <!-- Кнопка выхода -->
                         <form method="post" asp-controller="Account" asp-action="Logout" class="mt-4">
                             <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-500 transition duration-300">LogOut</button>
@@ -98,7 +98,9 @@
                         </div>
                         @foreach (var user in Model)
                         {
-                            var displayName = user.Id == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ? "Избранное" : user.UserName;
+                            var displayName = user.Id == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                            ? "Избранное"
+                            : user.UserName?.Split('@')[0]; // Убираем почту из имени пользователя
                             <div class="chat-item p-4 hover:bg-swamp-50 border-b border-swamp-100 cursor-pointer" data-user-id="@user.Id" data-user-name="@displayName" data-user-icon="@user.IconPath">
                                 <div class="flex items-center space-x-3">
                                     <img src="@user.IconPath" class="w-12 h-12 rounded-full">

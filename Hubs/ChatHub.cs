@@ -7,7 +7,6 @@ namespace WebApp_SignalR2025.Hubs
     public class ChatHub : Hub
     {
         private readonly UserManager<User> _userManager;
-
         private readonly Dictionary<string, HashSet<string>> _groupMembers = new();
 
         public ChatHub(UserManager<User> userManager)
@@ -24,6 +23,7 @@ namespace WebApp_SignalR2025.Hubs
             }
             await base.OnConnectedAsync();
         }
+
         // Group chat methods
         public async Task JoinGroupChat(string groupName)
         {
@@ -38,7 +38,8 @@ namespace WebApp_SignalR2025.Hubs
                 }
                 _groupMembers[groupName].Add(user.Id);
 
-                await Clients.Group(groupName).SendAsync("UserJoined", user.UserName);
+                var userNameWithoutEmail = user.UserName?.Split('@')[0]; // Убираем почту из имени
+                await Clients.Group(groupName).SendAsync("UserJoined", userNameWithoutEmail);
             }
         }
 
@@ -58,7 +59,8 @@ namespace WebApp_SignalR2025.Hubs
                     }
                 }
 
-                await Clients.Group(groupName).SendAsync("UserLeft", user.UserName);
+                var userNameWithoutEmail = user.UserName?.Split('@')[0]; // Убираем почту из имени
+                await Clients.Group(groupName).SendAsync("UserLeft", userNameWithoutEmail);
             }
         }
 
@@ -67,12 +69,13 @@ namespace WebApp_SignalR2025.Hubs
             if (Context.User?.Identity?.IsAuthenticated == true)
             {
                 var sender = await _userManager.GetUserAsync(Context.User);
+                var userNameWithoutEmail = sender.UserName?.Split('@')[0]; // Убираем почту из имени
 
                 await Clients.Group(groupName).SendAsync("ReceiveGroupMessage",
                     new
                     {
                         SenderId = sender.Id,
-                        SenderName = sender.UserName,
+                        SenderName = userNameWithoutEmail,
                         SenderIcon = sender.IconPath ?? "https://i.pravatar.cc/100",
                         GroupName = groupName,
                         Message = message,
@@ -87,6 +90,7 @@ namespace WebApp_SignalR2025.Hubs
             {
                 var sender = await _userManager.GetUserAsync(Context.User);
                 var receiver = await _userManager.FindByIdAsync(receiverId);
+                var userNameWithoutEmail = sender.UserName?.Split('@')[0]; // Убираем почту из имени
 
                 if (sender != null && receiver != null)
                 {
@@ -94,7 +98,7 @@ namespace WebApp_SignalR2025.Hubs
                         new
                         {
                             SenderId = sender.Id,
-                            SenderName = sender.UserName,
+                            SenderName = userNameWithoutEmail,
                             SenderIcon = sender.IconPath ?? "https://i.pravatar.cc/100",
                             Message = message,
                             Timestamp = DateTime.Now.ToString("o")
@@ -109,6 +113,7 @@ namespace WebApp_SignalR2025.Hubs
             {
                 var sender = await _userManager.GetUserAsync(Context.User);
                 var receiver = await _userManager.FindByIdAsync(receiverId);
+                var userNameWithoutEmail = sender.UserName?.Split('@')[0]; // Убираем почту из имени
 
                 if (sender != null && receiver != null)
                 {
@@ -116,7 +121,7 @@ namespace WebApp_SignalR2025.Hubs
                         new
                         {
                             SenderId = sender.Id,
-                            SenderName = sender.UserName
+                            SenderName = userNameWithoutEmail
                         });
                 }
             }
